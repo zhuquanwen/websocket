@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>点对点式websocket</title>
+    <script th:src="@{sockjs.min.js}"></script>
+    <script th:src="@{jquery-3.1.0.min.js}"></script>
+    <script th:src="@{stomp.min.js}"></script>
+    <script type="text/javascript">
+        var $1 = function(id){
+            return document.getElementById(id);
+        }
+        var userId = Math.random().toString(36).substr(2);
+        stompClient = null;
+        function setConnected(connected){
+
+            $1("connect").disabled = connected;
+            $1("disconnect").disabled = !connected;
+            $1("conversationDiv").style.visibility = connected ? "visible" : "hidden";
+            $1("response").innerHTML = "";
+        }
+        function connect(){
+            var socket = new SockJS("/endpointChat");
+            stompClient = Stomp.over(socket);
+            stompClient.connect({},function(frame){
+               setConnected(true);
+               console.log("connect to " + frame);
+               stompClient.subscribe("/user/" + userId + "/message",function(response){
+                   var msg = JSON.parse(response.body).msg;
+                   console.log("the msg："+msg);
+                   showMessage(msg);
+               })
+            });
+        }
+        function disconnect(){
+            if(stompClient != null){
+                stompClient.disconnect();
+                setConnected(false);
+                console.log("disconnect");
+            }
+        }
+        function sendName(){
+            var name = $1("name").value;
+            stompClient.send("/testChat",{},JSON.stringify({'msg': name,'userId':userId}));
+
+        }
+        function showMessage(msg){
+            $1("response").innerText = msg;
+        }
+    </script>
+
+</head>
+<body onload="disconnect();">
+<noscript><h2 style="color:#ff0000;">您的浏览器不支持websocket</h2></noscript>
+<div>
+    <div>
+        <button id="connect" onclick="connect();">连接</button>
+        <button id="disconnect" onclick="disconnect();" disabled="disabled">断开连接</button>
+    </div>
+    <div id="conversationDiv">
+        <label>输入你的名字:</label>
+        <input type="text" id="name"/>
+        <button id="sendName" onclick="sendName();">发送</button>
+        <br/>
+        <p id="response"></p>
+    </div>
+</div>
+</body>
+</html>
